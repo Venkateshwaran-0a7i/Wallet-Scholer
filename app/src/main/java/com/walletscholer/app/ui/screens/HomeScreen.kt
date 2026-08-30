@@ -38,6 +38,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.res.painterResource
 import com.walletscholer.app.R
 import androidx.compose.ui.Alignment
@@ -62,6 +63,30 @@ import com.walletscholer.app.ui.components.ProgressRing
 import com.walletscholer.app.ui.components.SectionHeader
 import com.walletscholer.app.ui.theme.WalletTheme
 
+private data class BudgetAlertItem(
+    val id: String,
+    val name: String,
+    val pct: Double,
+    val th: String,
+    val spent: Double,
+    val alloc: Double
+)
+
+private data class HomeCalculatedData(
+    val activeTxs: List<TransactionEntity>,
+    val balance: Double,
+    val currentMonthKey: String,
+    val monthTxs: List<TransactionEntity>,
+    val monthIncome: Double,
+    val monthExpense: Double,
+    val totalAllocated: Double,
+    val utilization: Double,
+    val remainingBudget: Double,
+    val safeToSpend: Double,
+    val actualSavingsPct: Double,
+    val alerts: List<BudgetAlertItem>
+)
+
 @Composable
 fun HomeScreen(
     transactions: List<TransactionEntity>,
@@ -77,47 +102,72 @@ fun HomeScreen(
     onOpenAccountSync: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val activeTxs = transactions.filter { it.status == "ACTIVE" }
-    val balance = FinanceEngine.computeBalance(transactions)
+    val homeData = remember(transactions, budgetEntity, allocations) {
+        val activeTxs = transactions.filter { it.status == "ACTIVE" }
+        val balance = FinanceEngine.computeBalance(transactions)
 
-    // Current month transactions
-    val currentMonthKey = budgetEntity?.monthKey ?: ""
-    val monthTxs = activeTxs.filter { it.date.startsWith(currentMonthKey) }
-    val monthIncome = monthTxs.filter { it.type == "INCOME" }.sumOf { it.amount }
-    val monthExpense = monthTxs.filter { it.type == "EXPENSE" }.sumOf { it.amount }
+        val currentMonthKey = budgetEntity?.monthKey?.takeIf { it.isNotBlank() }
+            ?: java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault()).format(java.util.Date())
+        val monthTxs = activeTxs.filter { it.date.startsWith(currentMonthKey) }
+        val monthIncome = monthTxs.filter { it.type == "INCOME" }.sumOf { it.amount }
+        val monthExpense = monthTxs.filter { it.type == "EXPENSE" }.sumOf { it.amount }
 
-    val totalAllocated = allocations.values.sum()
-    val utilization = FinanceEngine.utilizationPct(monthExpense, totalAllocated)
-    val remainingBudget = totalAllocated - monthExpense
+        val totalAllocated = allocations.values.sum()
+        val utilization = FinanceEngine.utilizationPct(monthExpense, totalAllocated)
+        val remainingBudget = totalAllocated - monthExpense
 
-    // Essential categories ("NEEDS")
-    val essentialCatIds = DefaultCategories.EXPENSE_CATEGORIES.filter { it.group == "NEEDS" }.map { it.id }.toSet()
-    val essentialRemaining = essentialCatIds.sumOf { id ->
-        val alloc = allocations[id] ?: 0.0
-        val spent = monthTxs.filter { it.type == "EXPENSE" && it.categoryId == id }.sumOf { it.amount }
-        kotlin.math.max(0.0, alloc - spent)
-    }
-    val savingsCommitment = kotlin.math.max(0.0, allocations["savings"] ?: 0.0)
-    val emiCommitment = kotlin.math.max(0.0, allocations["emi"] ?: 0.0)
-    val safeToSpend = FinanceEngine.safeToSpend(balance, essentialRemaining, savingsCommitment, emiCommitment)
+        val essentialCatIds = DefaultCategories.EXPENSE_CATEGORIES.filter { it.group == "NEEDS" }.map { it.id }.toSet()
+        val essentialRemaining = essentialCatIds.sumOf { id ->
+            val alloc = allocations[id] ?: 0.0
+            val spent = monthTxs.filter { it.type == "EXPENSE" && it.categoryId == id }.sumOf { it.amount }
+            kotlin.math.max(0.0, alloc - spent)
+        }
+        val savingsCommitment = kotlin.math.max(0.0, allocations["savings"] ?: 0.0)
+        val emiCommitment = kotlin.math.max(0.0, allocations["emi"] ?: 0.0)
+        val safeToSpend = FinanceEngine.safeToSpend(balance, essentialRemaining, savingsCommitment, emiCommitment)
+        val actualSavingsPct = if (monthIncome > 0) ((monthIncome - monthExpense) / monthIncome) * 100.0 else 0.0
 
-    val actualSavingsPct = if (monthIncome > 0) ((monthIncome - monthExpense) / monthIncome) * 100.0 else 0.0
-
-    // Alerts
-    data class BudgetAlert(val id: String, val name: String, val pct: Double, val th: String, val spent: Double, val alloc: Double)
-    val alerts = mutableListOf<BudgetAlert>()
-    DefaultCategories.EXPENSE_CATEGORIES.forEach { cat ->
-        val alloc = allocations[cat.id] ?: 0.0
-        if (alloc > 0.0) {
-            val spent = monthTxs.filter { it.type == "EXPENSE" && it.categoryId == cat.id }.sumOf { it.amount }
-            val pct = FinanceEngine.utilizationPct(spent, alloc)
-            val th = FinanceEngine.thresholdFor(pct)
-            if (th != null) {
-                alerts.add(BudgetAlert(cat.id, cat.name, pct, th, spent, alloc))
+        val alertsList = mutableListOf<BudgetAlertItem>()
+        DefaultCategories.EXPENSE_CATEGORIES.forEach { cat ->
+            val alloc = allocations[cat.id] ?: 0.0
+            if (alloc > 0.0) {
+                val spent = monthTxs.filter { it.type == "EXPENSE" && it.categoryId == cat.id }.sumOf { it.amount }
+                val pct = FinanceEngine.utilizationPct(spent, alloc)
+                val th = FinanceEngine.thresholdFor(pct)
+                if (th != null) {
+                    alertsList.add(BudgetAlertItem(cat.id, cat.name, pct, th, spent, alloc))
+                }
             }
         }
+        alertsList.sortByDescending { it.pct }
+
+        HomeCalculatedData(
+            activeTxs = activeTxs,
+            balance = balance,
+            currentMonthKey = currentMonthKey,
+            monthTxs = monthTxs,
+            monthIncome = monthIncome,
+            monthExpense = monthExpense,
+            totalAllocated = totalAllocated,
+            utilization = utilization,
+            remainingBudget = remainingBudget,
+            safeToSpend = safeToSpend,
+            actualSavingsPct = actualSavingsPct,
+            alerts = alertsList
+        )
     }
-    alerts.sortByDescending { it.pct }
+
+    val balance = homeData.balance
+    val currentMonthKey = homeData.currentMonthKey
+    val monthIncome = homeData.monthIncome
+    val monthExpense = homeData.monthExpense
+    val totalAllocated = homeData.totalAllocated
+    val utilization = homeData.utilization
+    val remainingBudget = homeData.remainingBudget
+    val safeToSpend = homeData.safeToSpend
+    val actualSavingsPct = homeData.actualSavingsPct
+    val monthTxs = homeData.monthTxs
+    val alerts = homeData.alerts
 
     // Insights
     val insights = mutableListOf<String>()

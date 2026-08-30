@@ -69,6 +69,16 @@ import com.walletscholer.app.ui.components.PrimaryAppButton
 import com.walletscholer.app.ui.components.SectionHeader
 import com.walletscholer.app.ui.theme.WalletTheme
 
+private data class BudatedCalculatedData(
+    val currentMonthKey: String,
+    val monthExpenseTxs: List<TransactionEntity>,
+    val totalSpent: Double,
+    val income: Double,
+    val totalAllocated: Double,
+    val exceedsIncome: Boolean,
+    val allExpenseCategories: List<CategoryItem>
+)
+
 @Composable
 fun BudgetScreen(
     budgetEntity: BudgetEntity?,
@@ -84,19 +94,31 @@ fun BudgetScreen(
     var showAddCategorySheet by remember { mutableStateOf(false) }
     var showIncomeDialog by remember { mutableStateOf(false) }
 
-    val currentMonthKey = budgetEntity?.monthKey?.takeIf { it.isNotBlank() }
-        ?: java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault()).format(java.util.Date())
-    val monthExpenseTxs = transactions.filter {
-        it.status == "ACTIVE" && it.type == "EXPENSE" && it.date.startsWith(currentMonthKey)
+    val budgetData = remember(
+        transactions, budgetEntity, allocations, customCategories
+    ) {
+        val monthKey = budgetEntity?.monthKey?.takeIf { it.isNotBlank() }
+            ?: java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault()).format(java.util.Date())
+        val monthExpenseTxs = transactions.filter {
+            it.status == "ACTIVE" && it.type == "EXPENSE" && it.date.startsWith(monthKey)
+        }
+        val spent = monthExpenseTxs.sumOf { it.amount }
+        val rawInc = budgetEntity?.income ?: 0.0
+        val inc = if (rawInc > 0) rawInc else 0.0
+        val totalAlloc = allocations.values.sum()
+        val exceeds = inc > 0 && totalAlloc > inc
+        val allCategories = (DefaultCategories.EXPENSE_CATEGORIES + customCategories).distinctBy { it.id }
+
+        BudatedCalculatedData(monthKey, monthExpenseTxs, spent, inc, totalAlloc, exceeds, allCategories)
     }
 
-    val totalSpent = monthExpenseTxs.sumOf { it.amount }
-    val rawIncome = budgetEntity?.income ?: 0.0
-    val income = if (rawIncome > 0) rawIncome else 0.0
-    val totalAllocated = allocations.values.sum()
-    val exceedsIncome = income > 0 && totalAllocated > income
-
-    val allExpenseCategories = (DefaultCategories.EXPENSE_CATEGORIES + customCategories).distinctBy { it.id }
+    val currentMonthKey = budgetData.currentMonthKey
+    val monthExpenseTxs = budgetData.monthExpenseTxs
+    val totalSpent = budgetData.totalSpent
+    val income = budgetData.income
+    val totalAllocated = budgetData.totalAllocated
+    val exceedsIncome = budgetData.exceedsIncome
+    val allExpenseCategories = budgetData.allExpenseCategories
 
     // Local state map for editing
     val editableAllocations = remember(allocations, isEditing) {

@@ -50,19 +50,21 @@ fun WalletScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedFilter by remember { mutableStateOf("ALL") }
-    val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+    val todayStr = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
 
-    val filteredList = transactions.filter { tx ->
-        when (selectedFilter) {
-            "INCOME" -> tx.type == "INCOME" && tx.status == "ACTIVE"
-            "EXPENSE" -> tx.type == "EXPENSE" && tx.status == "ACTIVE"
-            "VOIDED" -> tx.status == "VOIDED"
-            else -> true
+    val (filteredList, sortedDates, groupedByDate) = remember(transactions, selectedFilter) {
+        val filtered = transactions.filter { tx ->
+            when (selectedFilter) {
+                "INCOME" -> tx.type == "INCOME" && tx.status == "ACTIVE"
+                "EXPENSE" -> tx.type == "EXPENSE" && tx.status == "ACTIVE"
+                "VOIDED" -> tx.status == "VOIDED"
+                else -> true
+            }
         }
+        val grouped = filtered.groupBy { it.date }
+        val dates = grouped.keys.sortedDescending()
+        Triple(filtered, dates, grouped)
     }
-
-    val groupedByDate = filteredList.groupBy { it.date }
-    val sortedDates = groupedByDate.keys.sortedDescending()
 
     Column(
         modifier = modifier
