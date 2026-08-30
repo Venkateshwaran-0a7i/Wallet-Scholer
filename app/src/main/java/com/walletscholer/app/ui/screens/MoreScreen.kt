@@ -1,5 +1,6 @@
 package com.walletscholer.app.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +39,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.painterResource
+import com.walletscholer.app.R
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -120,12 +123,24 @@ fun MoreScreen(
             .padding(horizontal = 18.dp)
             .padding(top = 16.dp, bottom = 96.dp)
     ) {
-        Text(
-            text = "More",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = WalletTheme.colors.text
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_app_icon),
+                contentDescription = "Wallet Scholar Logo",
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "More",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = WalletTheme.colors.text
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

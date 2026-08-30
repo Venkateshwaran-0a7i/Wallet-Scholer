@@ -10,23 +10,24 @@ import kotlin.math.roundToLong
 object FinanceEngine {
 
     fun clamp(value: Double, minVal: Double, maxVal: Double): Double {
+        if (value.isNaN()) return minVal
         return min(maxVal, max(minVal, value))
     }
 
     fun fmtMoney(amount: Double): String {
-        val sign = if (amount < 0) "-" else ""
-        val absVal = kotlin.math.abs(amount)
+        val safeAmount = if (amount.isNaN() || amount.isInfinite()) 0.0 else amount
         val format = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
         format.maximumFractionDigits = 0
         format.currency = java.util.Currency.getInstance("INR")
-        return format.format(amount).replace("INR", "₹").trim()
+        return format.format(safeAmount).replace("INR", "₹").trim()
     }
 
     fun fmtMoneyPrecise(amount: Double): String {
+        val safeAmount = if (amount.isNaN() || amount.isInfinite()) 0.0 else amount
         val format = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
         format.maximumFractionDigits = 2
         format.currency = java.util.Currency.getInstance("INR")
-        return format.format(amount).replace("INR", "₹").trim()
+        return format.format(safeAmount).replace("INR", "₹").trim()
     }
 
     fun computeBalance(transactions: List<com.walletscholer.app.data.model.TransactionEntity>): Double {
@@ -38,7 +39,7 @@ object FinanceEngine {
     }
 
     fun utilizationPct(spent: Double, allocated: Double): Double {
-        if (allocated <= 0.0) return if (spent > 0) 100.0 else 0.0
+        if (allocated <= 0.0 || spent.isNaN() || allocated.isNaN()) return if (spent > 0) 100.0 else 0.0
         return clamp((spent / allocated) * 100.0, 0.0, 999.0)
     }
 

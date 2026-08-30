@@ -82,23 +82,25 @@ fun BudgetScreen(
     var isEditing by remember { mutableStateOf(false) }
     var showAddCategorySheet by remember { mutableStateOf(false) }
 
-    val currentMonthKey = budgetEntity?.monthKey ?: ""
+    val currentMonthKey = budgetEntity?.monthKey?.takeIf { it.isNotBlank() }
+        ?: java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault()).format(java.util.Date())
     val monthExpenseTxs = transactions.filter {
         it.status == "ACTIVE" && it.type == "EXPENSE" && it.date.startsWith(currentMonthKey)
     }
 
     val totalSpent = monthExpenseTxs.sumOf { it.amount }
-    val income = budgetEntity?.income ?: 51000.0
+    val rawIncome = budgetEntity?.income ?: 0.0
+    val income = if (rawIncome > 0) rawIncome else 51000.0
     val totalAllocated = allocations.values.sum()
     val exceedsIncome = totalAllocated > income
 
-    val allExpenseCategories = DefaultCategories.EXPENSE_CATEGORIES + customCategories
+    val allExpenseCategories = (DefaultCategories.EXPENSE_CATEGORIES + customCategories).distinctBy { it.id }
 
     // Local state map for editing
     val editableAllocations = remember(allocations, isEditing) {
         mutableStateMapOf<String, String>().apply {
             allExpenseCategories.forEach { cat ->
-                val amt = allocations[cat.id] ?: 0.0
+                val amt = (allocations[cat.id] ?: 0.0).let { if (it.isNaN() || it.isInfinite()) 0.0 else it }
                 put(cat.id, if (amt % 1 == 0.0) amt.toInt().toString() else amt.toString())
             }
         }
@@ -178,7 +180,7 @@ fun BudgetScreen(
 
             val progressPct = FinanceEngine.clamp(totalAllocated / income, 0.0, 1.0).toFloat()
             LinearProgressIndicator(
-                progress = { progressPct },
+                progress = progressPct,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)
@@ -313,7 +315,7 @@ fun BudgetScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         val linePct = FinanceEngine.clamp(pct / 100.0, 0.0, 1.0).toFloat()
                         LinearProgressIndicator(
-                            progress = { linePct },
+                            progress = linePct,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(5.dp)
