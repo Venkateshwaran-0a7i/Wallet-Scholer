@@ -334,13 +334,25 @@ fun HomeScreen(
                             color = WalletTheme.colors.subtext,
                             letterSpacing = 0.6.sp
                         )
-                        // Simulated Gold Chip
+                        // Detailed Gold Credit Card EMV Chip
                         Box(
                             modifier = Modifier
-                                .size(width = 32.dp, height = 22.dp)
-                                .clip(RoundedCornerShape(5.dp))
-                                .background(WalletTheme.colors.accent.copy(alpha = 0.85f))
-                        )
+                                .size(width = 34.dp, height = 24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(Color(0xFFF59E0B), Color(0xFFD97706))
+                                    )
+                                )
+                                .border(1.dp, Color(0xFFFDE68A).copy(alpha = 0.6f), RoundedCornerShape(6.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 22.dp, height = 14.dp)
+                                    .border(0.8.dp, Color(0xFF78350F).copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
