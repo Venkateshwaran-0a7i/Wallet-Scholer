@@ -82,6 +82,8 @@ fun MoreScreen(
     onToggleNotifMaster: (Boolean) -> Unit,
     onToggleNotifThreshold: (String, Boolean) -> Unit,
     onToggleSync: (Boolean) -> Unit,
+    onToggleBiometric: (Boolean) -> Unit,
+    isBiometricAvailable: Boolean,
     isGoogleSignedIn: Boolean,
     onLoginClick: () -> Unit,
     onLogoutClick: () -> Unit,
@@ -495,6 +497,46 @@ fun MoreScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
+            }
+        }
+
+        // Security Section
+        SectionHeader(title = "Security")
+        AppCard {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Biometric App Lock",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = if (isBiometricAvailable) WalletTheme.colors.text else WalletTheme.colors.faint
+                    )
+                    Text(
+                        text = if (isBiometricAvailable)
+                            "Require fingerprint or face to open the app"
+                        else
+                            "No biometrics enrolled on this device",
+                        fontSize = 12.sp,
+                        color = WalletTheme.colors.faint
+                    )
+                }
+                Switch(
+                    checked = currentSettings.biometricLockEnabled && isBiometricAvailable,
+                    onCheckedChange = { onToggleBiometric(it) },
+                    enabled = isBiometricAvailable,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = WalletTheme.colors.accent,
+                        uncheckedTrackColor = WalletTheme.colors.borderSoft
+                    ),
+                    modifier = Modifier.testTag("biometric_switch")
+                )
             }
         }
 

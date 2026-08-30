@@ -20,5 +20,6 @@ data class UserSettingsEntity(
     val googleSheetId: String = "1ITMN0Zz5vg0vTECz_Uty__-IKneTCtu1Fw-lYe2Ic_M",
     val googleSheetUrl: String = "https://docs.google.com/spreadsheets/d/1ITMN0Zz5vg0vTECz_Uty__-IKneTCtu1Fw-lYe2Ic_M/edit",
     val lastSyncTime: String = "",
-    val syncStatus: String = "NOT_SYNCED"
+    val syncStatus: String = "NOT_SYNCED",
+    val biometricLockEnabled: Boolean = false
 )

@@ -2,11 +2,11 @@ package com.walletscholer.app
 
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -43,12 +43,14 @@ import androidx.compose.ui.unit.sp
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.common.api.ApiException
+import com.walletscholer.app.data.auth.BiometricLockManager
 import com.walletscholer.app.data.model.TransactionEntity
 import com.walletscholer.app.data.remote.GoogleAuthManager
 import com.walletscholer.app.ui.navigation.NAV_ITEMS
 import com.walletscholer.app.ui.navigation.Screen
 import com.walletscholer.app.ui.screens.AccountSyncSheet
 import com.walletscholer.app.ui.screens.AddTransactionSheet
+import com.walletscholer.app.ui.screens.BiometricLockScreen
 import com.walletscholer.app.ui.screens.BudgetScreen
 import com.walletscholer.app.ui.screens.CalculatorScreen
 import com.walletscholer.app.ui.screens.GeminiAdvisorSheet
@@ -59,7 +61,7 @@ import com.walletscholer.app.ui.theme.WalletScholarTheme
 import com.walletscholer.app.ui.theme.WalletTheme
 import com.walletscholer.app.ui.viewmodel.WalletViewModel
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val viewModel: WalletViewModel by viewModels()
 
@@ -132,13 +134,40 @@ fun MainAppContent(
     var showAccountSyncSheet by remember { mutableStateOf(false) }
     var editingTx by remember { mutableStateOf<TransactionEntity?>(null) }
 
-    val transactions by viewModel.transactions.collectAsState()
-    val goals by viewModel.goals.collectAsState()
+    // ── Biometric lock state ──────────────────────────────────────────────────
     val settings by viewModel.settings.collectAsState()
+    val biometricAvailable = remember {
+        BiometricLockManager.isAvailable(viewModel.getApplication())
+    }
+    // Start locked if biometric lock is enabled and hardware is available.
+    // We use null as "undecided" so we don't flash the lock screen before
+    // settings are loaded from Room.
+    var isLocked by remember { mutableStateOf<Boolean?>(null) }
+    val biometricEnabled = settings?.biometricLockEnabled == true && biometricAvailable
+
+    // Once settings load, decide initial lock state
+    androidx.compose.runtime.LaunchedEffect(biometricEnabled) {
+        if (isLocked == null) {
+            isLocked = biometricEnabled
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    val transactions by viewModel.transactions.collectAsState()
+    // Re-collect settings since it's now declared above
+    val goals by viewModel.goals.collectAsState()
     val budget by viewModel.budget.collectAsState()
 
     val allocations = remember(budget) { viewModel.parseAllocations(budget) }
     val customCategories = remember(budget) { viewModel.parseCustomCategories(budget) }
+
+    // Show biometric lock screen when app is locked
+    if (isLocked == true) {
+        BiometricLockScreen(onUnlocked = { isLocked = false })
+        return
+    }
+    // While settings are still null (first frame), show nothing to avoid flicker
+    if (isLocked == null && biometricEnabled) return
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -252,7 +281,8 @@ fun MainAppContent(
                         onUpdateAllocations = { viewModel.updateBudgetAllocations(it) },
                         onAddCustomCategory = { name, amount, iconKey ->
                             viewModel.addCustomCategory(name, amount, iconKey)
-                        }
+                        },
+                        onUpdateIncome = { viewModel.updateBudgetIncome(it) }
                     )
                     Screen.More -> MoreScreen(
                         goals = goals,
@@ -273,6 +303,8 @@ fun MainAppContent(
                             viewModel.toggleNotifThreshold(key, enabled)
                         },
                         onToggleSync = { viewModel.toggleSync(it) },
+                        onToggleBiometric = { viewModel.toggleBiometricLock(it) },
+                        isBiometricAvailable = biometricAvailable,
                         isGoogleSignedIn = googleAccount != null,
                         onLoginClick = onStartGoogleSignIn,
                         onLogoutClick = onGoogleSignOut

@@ -92,4 +92,10 @@ dependencies {
     implementation("com.google.http-client:google-http-client-android:1.44.1") {
         exclude(group = "org.apache.httpcomponents")
     }
+
+    // Biometric authentication (fingerprint / face)
+    implementation("androidx.biometric:biometric:1.1.0")
+
+    // AppCompat required for AppCompatActivity → FragmentActivity (BiometricPrompt)
+    implementation("androidx.appcompat:appcompat:1.7.0")
 }

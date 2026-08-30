@@ -77,10 +77,12 @@ fun BudgetScreen(
     transactions: List<TransactionEntity>,
     onUpdateAllocations: (Map<String, Double>) -> Unit,
     onAddCustomCategory: (name: String, amount: Double, iconKey: String) -> Unit,
+    onUpdateIncome: (Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isEditing by remember { mutableStateOf(false) }
     var showAddCategorySheet by remember { mutableStateOf(false) }
+    var showIncomeDialog by remember { mutableStateOf(false) }
 
     val currentMonthKey = budgetEntity?.monthKey?.takeIf { it.isNotBlank() }
         ?: java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault()).format(java.util.Date())
@@ -90,9 +92,9 @@ fun BudgetScreen(
 
     val totalSpent = monthExpenseTxs.sumOf { it.amount }
     val rawIncome = budgetEntity?.income ?: 0.0
-    val income = if (rawIncome > 0) rawIncome else 51000.0
+    val income = if (rawIncome > 0) rawIncome else 0.0
     val totalAllocated = allocations.values.sum()
-    val exceedsIncome = totalAllocated > income
+    val exceedsIncome = income > 0 && totalAllocated > income
 
     val allExpenseCategories = (DefaultCategories.EXPENSE_CATEGORIES + customCategories).distinctBy { it.id }
 
@@ -163,13 +165,51 @@ fun BudgetScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Column {
+                    Text(
+                        text = "Monthly Income",
+                        fontSize = 11.sp,
+                        color = WalletTheme.colors.subtext
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = if (income > 0) FinanceEngine.fmtMoney(income) else "Set income →",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (income > 0) WalletTheme.colors.text else WalletTheme.colors.accent
+                        )
+                    }
+                }
+                IconButton(
+                    onClick = { showIncomeDialog = true },
+                    modifier = Modifier.testTag("budget_income_edit")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit income",
+                        tint = WalletTheme.colors.accent,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = "Allocated",
                     fontSize = 13.sp,
                     color = WalletTheme.colors.subtext
                 )
                 Text(
-                    text = "${FinanceEngine.fmtMoney(totalAllocated)} / ${FinanceEngine.fmtMoney(income)} income",
+                    text = if (income > 0)
+                        "${FinanceEngine.fmtMoney(totalAllocated)} / ${FinanceEngine.fmtMoney(income)}"
+                    else
+                        FinanceEngine.fmtMoney(totalAllocated),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = WalletTheme.colors.text
@@ -178,16 +218,18 @@ fun BudgetScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            val progressPct = FinanceEngine.clamp(totalAllocated / income, 0.0, 1.0).toFloat()
-            LinearProgressIndicator(
-                progress = progressPct,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = if (exceedsIncome) WalletTheme.colors.danger else WalletTheme.colors.accent,
-                trackColor = WalletTheme.colors.borderSoft
-            )
+            if (income > 0) {
+                val progressPct = FinanceEngine.clamp(totalAllocated / income, 0.0, 1.0).toFloat()
+                LinearProgressIndicator(
+                    progress = { progressPct },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = if (exceedsIncome) WalletTheme.colors.danger else WalletTheme.colors.accent,
+                    trackColor = WalletTheme.colors.borderSoft
+                )
+            }
 
             if (exceedsIncome) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -225,6 +267,13 @@ fun BudgetScreen(
                     fontWeight = FontWeight.Bold,
                     color = WalletTheme.colors.text
                 )
+                if (income > 0) {
+                    Text(
+                        text = "  (${((totalSpent / income) * 100).toInt()}% of income)",
+                        fontSize = 12.5.sp,
+                        color = WalletTheme.colors.faint
+                    )
+                }
             }
         }
 
@@ -315,7 +364,7 @@ fun BudgetScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         val linePct = FinanceEngine.clamp(pct / 100.0, 0.0, 1.0).toFloat()
                         LinearProgressIndicator(
-                            progress = linePct,
+                            progress = { linePct },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(5.dp)
@@ -335,6 +384,75 @@ fun BudgetScreen(
                 Spacer(modifier = Modifier.height(96.dp))
             }
         }
+    }
+
+    // Income edit dialog
+    if (showIncomeDialog) {
+        var incomeInput by remember { mutableStateOf(if (income > 0) income.toInt().toString() else "") }
+        AlertDialog(
+            onDismissRequest = { showIncomeDialog = false },
+            title = {
+                Text(
+                    "Monthly Income",
+                    fontWeight = FontWeight.Bold,
+                    color = WalletTheme.colors.text
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "Enter your total monthly income (salary + other sources).",
+                        fontSize = 13.sp,
+                        color = WalletTheme.colors.subtext
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = incomeInput,
+                        onValueChange = { input ->
+                            if (input.isEmpty() || input.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                incomeInput = input
+                            }
+                        },
+                        placeholder = { Text("e.g. 55000", color = WalletTheme.colors.faint) },
+                        prefix = { Text("₹ ", color = WalletTheme.colors.subtext) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("income_input"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = WalletTheme.colors.accent,
+                            unfocusedBorderColor = WalletTheme.colors.border,
+                            focusedTextColor = WalletTheme.colors.text,
+                            unfocusedTextColor = WalletTheme.colors.text,
+                            focusedContainerColor = WalletTheme.colors.appBg,
+                            unfocusedContainerColor = WalletTheme.colors.appBg
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val v = incomeInput.toDoubleOrNull()
+                        if (v != null && v >= 0) {
+                            onUpdateIncome(v)
+                            showIncomeDialog = false
+                        }
+                    },
+                    modifier = Modifier.testTag("confirm_income_button")
+                ) {
+                    Text("Save", fontWeight = FontWeight.Bold, color = WalletTheme.colors.accent)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showIncomeDialog = false }) {
+                    Text("Cancel", color = WalletTheme.colors.subtext)
+                }
+            },
+            containerColor = WalletTheme.colors.surface
+        )
     }
 
     if (showAddCategorySheet) {

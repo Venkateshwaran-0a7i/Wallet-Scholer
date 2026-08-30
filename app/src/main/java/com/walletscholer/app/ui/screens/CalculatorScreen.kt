@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -40,6 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.walletscholer.app.domain.FinanceEngine
@@ -47,6 +51,8 @@ import com.walletscholer.app.ui.components.AppCard
 import com.walletscholer.app.ui.theme.WalletTheme
 
 enum class CalcTab(val id: String, val label: String) {
+    NORMAL("normal", "Calculator"),
+    SPLIT("split", "Split Bill"),
     EMI("emi", "EMI"),
     LOAN("loan", "Loan"),
     SI("si", "Simple Interest"),
@@ -60,7 +66,7 @@ enum class CalcTab(val id: String, val label: String) {
 fun CalculatorScreen(
     modifier: Modifier = Modifier
 ) {
-    var activeTab by remember { mutableStateOf(CalcTab.EMI) }
+    var activeTab by remember { mutableStateOf(CalcTab.NORMAL) }
 
     Column(
         modifier = modifier
@@ -69,7 +75,7 @@ fun CalculatorScreen(
             .padding(top = 16.dp)
     ) {
         Text(
-            text = "Financial Calculator",
+            text = "Calculator",
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = WalletTheme.colors.text
@@ -115,6 +121,8 @@ fun CalculatorScreen(
                 .padding(bottom = 96.dp)
         ) {
             when (activeTab) {
+                CalcTab.NORMAL -> NormalCalculatorView()
+                CalcTab.SPLIT -> SplitCalculatorView()
                 CalcTab.EMI -> EmiCalculatorView()
                 CalcTab.LOAN -> LoanAffordabilityView()
                 CalcTab.SI -> SimpleInterestView()
@@ -123,6 +131,244 @@ fun CalculatorScreen(
                 CalcTab.SIP -> SipCalculatorView()
                 CalcTab.PERCENTAGE -> PercentageCalculatorView()
             }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
+// 0. Normal Calculator
+// ─────────────────────────────────────────────
+@Composable
+fun NormalCalculatorView() {
+    var display by remember { mutableStateOf("0") }
+    var operator by remember { mutableStateOf<String?>(null) }
+    var operand1 by remember { mutableStateOf<Double?>(null) }
+    var justEvaluated by remember { mutableStateOf(false) }
+
+    fun onDigit(d: String) {
+        if (justEvaluated) {
+            display = d
+            justEvaluated = false
+        } else {
+            display = if (display == "0") d else if (display.length < 14) display + d else display
+        }
+    }
+
+    fun onDot() {
+        if (justEvaluated) { display = "0."; justEvaluated = false; return }
+        if (!display.contains(".")) display = "$display."
+    }
+
+    fun onOperator(op: String) {
+        operand1 = display.toDoubleOrNull()
+        operator = op
+        justEvaluated = true
+    }
+
+    fun onEquals() {
+        val a = operand1 ?: return
+        val b = display.toDoubleOrNull() ?: return
+        val result = when (operator) {
+            "+" -> a + b
+            "−" -> a - b
+            "×" -> a * b
+            "÷" -> if (b != 0.0) a / b else Double.NaN
+            "%" -> a * b / 100.0
+            else -> b
+        }
+        display = if (result.isNaN()) "Error" else if (result % 1 == 0.0 && result < 1e12) result.toLong().toString() else String.format(java.util.Locale.US, "%.8g", result).trimEnd('0').trimEnd('.')
+        operand1 = null
+        operator = null
+        justEvaluated = true
+    }
+
+    fun onClear() {
+        display = "0"
+        operator = null
+        operand1 = null
+        justEvaluated = false
+    }
+
+    fun onBackspace() {
+        if (justEvaluated || display.length <= 1) { display = "0"; return }
+        display = display.dropLast(1)
+    }
+
+    AppCard(
+        backgroundColor = WalletTheme.colors.surface,
+        borderColor = WalletTheme.colors.border
+    ) {
+        // Display
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp, top = 4.dp),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Text(
+                text = display,
+                fontSize = if (display.length > 10) 28.sp else 40.sp,
+                fontWeight = FontWeight.Light,
+                color = WalletTheme.colors.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End
+            )
+        }
+
+        val buttonRows = listOf(
+            listOf("C", "⌫", "%", "÷"),
+            listOf("7", "8", "9", "×"),
+            listOf("4", "5", "6", "−"),
+            listOf("1", "2", "3", "+"),
+            listOf("±", "0", ".", "=")
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            buttonRows.forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    row.forEach { label ->
+                        val isOp = label in listOf("÷", "×", "−", "+", "=")
+                        val isClear = label == "C"
+                        val isBack = label == "⌫"
+                        val bgColor = when {
+                            label == "=" -> WalletTheme.colors.accent
+                            isOp || isClear -> WalletTheme.colors.accentSoft
+                            else -> WalletTheme.colors.surfaceAlt
+                        }
+                        val textColor = when {
+                            label == "=" -> WalletTheme.colors.accentText
+                            isOp || isClear -> WalletTheme.colors.accent
+                            else -> WalletTheme.colors.text
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(bgColor)
+                                .clickable {
+                                    when (label) {
+                                        "C" -> onClear()
+                                        "⌫" -> onBackspace()
+                                        "=" -> onEquals()
+                                        "+", "−", "×", "÷", "%" -> onOperator(label)
+                                        "." -> onDot()
+                                        "±" -> { display = if (display.startsWith("-")) display.drop(1) else "-$display" }
+                                        else -> onDigit(label)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isBack) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Backspace,
+                                    contentDescription = "Backspace",
+                                    tint = WalletTheme.colors.accent,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            } else {
+                                Text(
+                                    text = label,
+                                    fontSize = 22.sp,
+                                    fontWeight = if (isOp || isClear) FontWeight.Bold else FontWeight.Medium,
+                                    color = textColor
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
+// 0b. Split Bill Calculator
+// ─────────────────────────────────────────────
+@Composable
+fun SplitCalculatorView() {
+    var bill by remember { mutableStateOf("") }
+    var tip by remember { mutableStateOf("15") }
+    var people by remember { mutableStateOf("2") }
+
+    val billAmt = bill.toDoubleOrNull() ?: 0.0
+    val tipPct = tip.toDoubleOrNull() ?: 0.0
+    val numPeople = people.toIntOrNull()?.coerceAtLeast(1) ?: 1
+
+    val tipAmount = billAmt * tipPct / 100.0
+    val total = billAmt + tipAmount
+    val perPerson = if (numPeople > 0) total / numPeople else 0.0
+
+    Column {
+        Text(
+            text = "Split a restaurant bill evenly among friends.",
+            fontSize = 12.5.sp,
+            color = WalletTheme.colors.subtext,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        CalcInputField(label = "Bill Amount", value = bill, onValueChange = { bill = it }, suffix = "₹", placeholder = "0")
+        CalcInputField(label = "Tip %", value = tip, onValueChange = { tip = it }, suffix = "%", placeholder = "15")
+        CalcInputField(label = "Number of People", value = people, onValueChange = { v ->
+            if (v.isEmpty() || v.matches(Regex("^\\d+$"))) people = v
+        }, placeholder = "2")
+
+        // Tip presets
+        Text(
+            text = "TIP PRESET",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = WalletTheme.colors.subtext,
+            letterSpacing = 0.5.sp
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("0", "5", "10", "15", "18", "20").forEach { pct ->
+                val selected = tip == pct
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = if (selected) WalletTheme.colors.accentSoft else Color.Transparent,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.5.dp,
+                        if (selected) WalletTheme.colors.accent else WalletTheme.colors.border
+                    ),
+                    modifier = Modifier.clickable { tip = pct }
+                ) {
+                    Text(
+                        text = "$pct%",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (selected) WalletTheme.colors.accent else WalletTheme.colors.subtext,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+
+        if (billAmt > 0) {
+            ResultPanel(
+                rows = listOf(
+                    ResultRow("Per Person", FinanceEngine.fmtMoneyPrecise(perPerson), isBig = true),
+                    ResultRow("Tip Amount", FinanceEngine.fmtMoney(tipAmount)),
+                    ResultRow("Total Bill", FinanceEngine.fmtMoney(total)),
+                    ResultRow("Splitting between", "$numPeople people")
+                )
+            )
+        } else {
+            ResultPanel(rows = listOf(ResultRow("Enter a bill amount to split", "—")))
+        }
+
+        ResetButton {
+            bill = ""; tip = "15"; people = "2"
         }
     }
 }

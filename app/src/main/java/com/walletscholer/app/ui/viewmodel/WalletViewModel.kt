@@ -1,6 +1,7 @@
 package com.walletscholer.app.ui.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.walletscholer.app.data.local.AppDatabase
@@ -10,11 +11,14 @@ import com.walletscholer.app.data.model.DefaultCategories
 import com.walletscholer.app.data.model.GoalEntity
 import com.walletscholer.app.data.model.TransactionEntity
 import com.walletscholer.app.data.model.UserSettingsEntity
+import com.walletscholer.app.data.remote.GoogleAuthManager
+import com.walletscholer.app.data.remote.GoogleSheetsSyncEngine
 import com.walletscholer.app.data.repository.WalletScholarRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -70,6 +74,54 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
             repository.initializeSeedDataIfNeeded()
         }
     }
+
+    // ─── Auto-sync helper ────────────────────────────────────────────────────────
+    /**
+     * Triggers a background Google Sheets sync after any data mutation, but ONLY
+     * when the user has sync enabled and is signed in to Google.  Failures are
+     * logged silently — we never let sync errors surface to the user as crashes.
+     */
+    private fun triggerAutoSync() {
+        val ctx = getApplication<Application>()
+        viewModelScope.launch {
+            try {
+                val s = settings.value ?: return@launch
+                if (!s.syncEnabled) return@launch
+                val sheetId = s.googleSheetId.takeIf { it.isNotBlank() } ?: return@launch
+                val account = GoogleAuthManager.getLastSignedInAccount(ctx) ?: return@launch
+
+                // Collect the latest data snapshots for sync
+                val txList = transactions.value
+                val goalList = goals.value
+                val allocMap = parseAllocations(budget.value)
+
+                val result = GoogleSheetsSyncEngine.performGoogleSheetsSync(
+                    context = ctx,
+                    account = account,
+                    sheetId = sheetId,
+                    transactions = txList,
+                    goals = goalList,
+                    allocations = allocMap
+                )
+
+                // Persist sync result without surfacing to UI (silent background sync)
+                val cur = settings.value ?: UserSettingsEntity()
+                val time = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
+                repository.updateSettings(
+                    cur.copy(
+                        lastSyncTime = if (result.success) time else cur.lastSyncTime,
+                        syncStatus = if (result.success) "SYNCED" else "FAILED",
+                        syncEnabled = result.success || cur.syncEnabled
+                    )
+                )
+                Log.d("AutoSync", if (result.success) "✅ Auto-synced ${result.exportedRows} rows" else "❌ Auto-sync failed: ${result.message}")
+            } catch (e: Exception) {
+                Log.w("AutoSync", "Auto-sync exception: ${e.message}")
+            }
+        }
+    }
+
+    // ─── Parsing helpers ─────────────────────────────────────────────────────────
 
     fun parseAllocations(budgetEntity: BudgetEntity?): Map<String, Double> {
         val map = mutableMapOf<String, Double>()
@@ -127,6 +179,8 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
         return list
     }
 
+    // ─── Mutations (each calls triggerAutoSync) ───────────────────────────────────
+
     fun saveTransaction(
         id: String? = null,
         type: String,
@@ -148,18 +202,21 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                 status = "ACTIVE"
             )
             repository.saveTransaction(tx)
+            triggerAutoSync()
         }
     }
 
     fun voidTransaction(tx: TransactionEntity) {
         viewModelScope.launch {
             repository.updateTransaction(tx.copy(status = "VOIDED"))
+            triggerAutoSync()
         }
     }
 
     fun deleteTransaction(tx: TransactionEntity) {
         viewModelScope.launch {
             repository.deleteTransaction(tx)
+            triggerAutoSync()
         }
     }
 
@@ -179,12 +236,14 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                 targetDate = targetDate
             )
             repository.saveGoal(goal)
+            triggerAutoSync()
         }
     }
 
     fun deleteGoal(id: String) {
         viewModelScope.launch {
             repository.deleteGoal(id)
+            triggerAutoSync()
         }
     }
 
@@ -194,6 +253,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
             val json = JSONObject()
             allocations.forEach { (k, v) -> json.put(k, v) }
             repository.saveBudget(cur.copy(allocationsJson = json.toString()))
+            triggerAutoSync()
         }
     }
 
@@ -201,6 +261,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val cur = budget.value ?: BudgetEntity(monthKey = currentMonthKey)
             repository.saveBudget(cur.copy(income = income))
+            triggerAutoSync()
         }
     }
 
@@ -232,6 +293,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                     allocationsJson = allocJson.toString()
                 )
             )
+            triggerAutoSync()
         }
     }
 
@@ -268,11 +330,20 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun toggleBiometricLock(enable: Boolean) {
+        viewModelScope.launch {
+            val cur = settings.value ?: UserSettingsEntity()
+            repository.updateSettings(cur.copy(biometricLockEnabled = enable))
+        }
+    }
+
     fun toggleSync(enable: Boolean) {
         viewModelScope.launch {
             val cur = settings.value ?: UserSettingsEntity()
             val time = if (enable) SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date()) else ""
             repository.updateSettings(cur.copy(syncEnabled = enable, lastSyncTime = time, syncStatus = "SYNCED"))
+            // Immediately sync when user enables it
+            if (enable) triggerAutoSync()
         }
     }
 
@@ -341,4 +412,3 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 }
-
