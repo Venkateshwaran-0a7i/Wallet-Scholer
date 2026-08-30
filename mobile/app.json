@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Wallet Scholer",
+    "slug": "wallet-scholer",
+    "scheme": "walletscholer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0F0F12"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.walletscholer.app"
+    },
+    "android": {
+      "package": "com.walletscholer.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F0F12"
+      }
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:4000"
+    }
+  }
+}

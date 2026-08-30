@@ -1,0 +1,6 @@
+{
+  "name": "Wallet Scholar",
+  "description": "Smart personal finance tracker, budget planner, savings goals, and financial calculators",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

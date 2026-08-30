@@ -1,0 +1,43 @@
+package com.walletscholer.app.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+// Dark Theme Colors
+val DarkAppBg = Color(0xFF0F0F12)
+val DarkSurface = Color(0xFF19191E)
+val DarkSurfaceRaised = Color(0xFF212127)
+val DarkBorder = Color(0xFF2A2A31)
+val DarkBorderSoft = Color(0xFF232328)
+val DarkText = Color(0xFFF4F3F1)
+val DarkSubtext = Color(0xFF9B9AA3)
+val DarkFaint = Color(0xFF6B6A73)
+val DarkAccent = Color(0xFFF2A93B)
+val DarkAccentSoft = Color(0xFF2A2214)
+val DarkAccentText = Color(0xFF1A1206)
+val DarkSuccess = Color(0xFF3ECF8E)
+val DarkSuccessSoft = Color(0xFF122E22)
+val DarkDanger = Color(0xFFFB6F6F)
+val DarkDangerSoft = Color(0xFF331717)
+val DarkWarn = Color(0xFFF5C451)
+val DarkWarnSoft = Color(0xFF302712)
+val DarkNavBg = Color(0xFF16161B)
+
+// Light Theme Colors
+val LightAppBg = Color(0xFFF3F1EC)
+val LightSurface = Color(0xFFFFFFFF)
+val LightSurfaceRaised = Color(0xFFFAF9F6)
+val LightBorder = Color(0xFFE7E3D9)
+val LightBorderSoft = Color(0xFFEFEBE1)
+val LightText = Color(0xFF211D14)
+val LightSubtext = Color(0xFF6F6A5C)
+val LightFaint = Color(0xFF9B9584)
+val LightAccent = Color(0xFFB5720E)
+val LightAccentSoft = Color(0xFFFBF1E2)
+val LightAccentText = Color(0xFFFFFFFF)
+val LightSuccess = Color(0xFF1F9D63)
+val LightSuccessSoft = Color(0xFFE8F7F0)
+val LightDanger = Color(0xFFD14343)
+val LightDangerSoft = Color(0xFFFCECEB)
+val LightWarn = Color(0xFFB98A15)
+val LightWarnSoft = Color(0xFFFBF4E4)
+val LightNavBg = Color(0xFFFFFFFF)
