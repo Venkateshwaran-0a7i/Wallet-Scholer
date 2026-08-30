@@ -317,6 +317,7 @@ fun MainAppContent(
     if (showAddTxSheet) {
         AddTransactionSheet(
             editingTx = editingTx,
+            customCategories = customCategories,
             onDismiss = {
                 showAddTxSheet = false
                 editingTx = null

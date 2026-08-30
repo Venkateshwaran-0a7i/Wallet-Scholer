@@ -61,6 +61,7 @@ import java.util.Locale
 @Composable
 fun AddTransactionSheet(
     editingTx: TransactionEntity?,
+    customCategories: List<CategoryItem> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (id: String?, type: String, categoryId: String, amount: Double, date: String, description: String) -> Unit,
     onVoid: (TransactionEntity) -> Unit
@@ -74,7 +75,9 @@ fun AddTransactionSheet(
     var description by remember { mutableStateOf(editingTx?.description ?: "") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val categories = if (type == "INCOME") DefaultCategories.INCOME_CATEGORIES else DefaultCategories.EXPENSE_CATEGORIES
+    val categories = remember(type, customCategories) {
+        if (type == "INCOME") DefaultCategories.INCOME_CATEGORIES else DefaultCategories.EXPENSE_CATEGORIES + customCategories
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

@@ -32,8 +32,8 @@ object DefaultCategories {
 
     val ALL_CATEGORIES = EXPENSE_CATEGORIES + INCOME_CATEGORIES
 
-    fun findCategory(id: String): CategoryItem {
-        return ALL_CATEGORIES.find { it.id == id }
+    fun findCategory(id: String, customCategories: List<CategoryItem> = emptyList()): CategoryItem {
+        return (ALL_CATEGORIES + customCategories).find { it.id == id }
             ?: CategoryItem(id, id.replaceFirstChar { it.uppercase() }, "OTHER", "more_horizontal")
     }
 }
