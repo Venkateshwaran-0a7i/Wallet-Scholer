@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.walletscholer.app.data.model.BudgetEntity
@@ -206,7 +207,12 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp)
+            ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_app_icon),
                     contentDescription = "Wallet Scholar Logo",
@@ -215,18 +221,22 @@ fun HomeScreen(
                         .clip(RoundedCornerShape(10.dp))
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Welcome back, $userDisplayName 👋",
-                        fontSize = 12.5.sp,
-                        color = WalletTheme.colors.subtext
+                        fontSize = 12.sp,
+                        color = WalletTheme.colors.subtext,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(1.dp))
                     Text(
                         text = "Wallet Scholar",
-                        fontSize = 20.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = WalletTheme.colors.text
+                        color = WalletTheme.colors.text,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
