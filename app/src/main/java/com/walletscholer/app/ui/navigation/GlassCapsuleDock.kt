@@ -16,19 +16,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -41,9 +43,9 @@ import androidx.compose.ui.unit.sp
 import com.walletscholer.app.ui.theme.WalletTheme
 
 /**
- * Modern floating glass capsule dock navigation bar (detached deck).
- * Features translucent frosted glassmorphism styling, ambient floating shadow,
- * smooth spring animated active indicator pills, and ergonomic touch targets.
+ * Modern floating glass capsule dock navigation bar.
+ * Uses Compose blur effects, transparent glassmorphism background,
+ * subtle specular light borders, and smooth spring animations.
  */
 @Composable
 fun GlassCapsuleDock(
@@ -52,59 +54,77 @@ fun GlassCapsuleDock(
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
-    // Frosted glass background gradient
+    val dockShape = RoundedCornerShape(36.dp)
+
+    // Glass translucency colors with alpha
     val glassBgBrush = remember(isDarkTheme) {
         if (isDarkTheme) {
             Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xF0181520),
-                    Color(0xF5100E17)
+                    Color(0xCC1E1B29),
+                    Color(0xB312101B)
                 )
             )
         } else {
             Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xF2FFFFFF),
-                    Color(0xFAF4F6FB)
+                    Color(0xD9FFFFFF),
+                    Color(0xB8F1F3F9)
                 )
             )
         }
     }
 
-    val glassBorderColor = if (isDarkTheme) {
-        Color(0x38FFFFFF)
-    } else {
-        Color(0x26000000)
+    // Specular glass highlight border
+    val glassBorderBrush = remember(isDarkTheme) {
+        if (isDarkTheme) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0x66FFFFFF),
+                    Color(0x1AFFFFFF),
+                    Color(0x0DFFFFFF)
+                )
+            )
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0x80FFFFFF),
+                    Color(0x33B0BEC5),
+                    Color(0x1A90A4AE)
+                )
+            )
+        }
     }
-
-    val dockShape = RoundedCornerShape(32.dp)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .testTag("glass_capsule_dock")
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 10.dp)
+            .testTag("glass_capsule_dock"),
+        contentAlignment = Alignment.Center
     ) {
+        // Floating Frosted Glass Container
         Surface(
             shape = dockShape,
             color = Color.Transparent,
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = 20.dp,
+                    elevation = 24.dp,
                     shape = dockShape,
-                    spotColor = if (isDarkTheme) Color(0x99000000) else Color(0x33000000),
-                    ambientColor = if (isDarkTheme) Color(0x4D000000) else Color(0x1A000000)
+                    spotColor = if (isDarkTheme) Color(0x99000000) else Color(0x334B5563),
+                    ambientColor = if (isDarkTheme) Color(0x66000000) else Color(0x1F1E293B)
                 )
                 .clip(dockShape)
                 .background(glassBgBrush)
-                .border(1.dp, glassBorderColor, dockShape)
+                .border(1.2.dp, glassBorderBrush, dockShape)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 6.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 NAV_ITEMS.forEach { screen ->
@@ -113,7 +133,8 @@ fun GlassCapsuleDock(
                     DockItem(
                         screen = screen,
                         selected = selected,
-                        onClick = { onScreenSelected(screen) }
+                        onClick = { onScreenSelected(screen) },
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
@@ -125,12 +146,13 @@ fun GlassCapsuleDock(
 private fun DockItem(
     screen: Screen,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
     val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.12f else 1.0f,
+        targetValue = if (selected) 1.15f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -150,10 +172,10 @@ private fun DockItem(
         label = "text_color"
     )
 
-    val itemShape = RoundedCornerShape(22.dp)
+    val itemShape = RoundedCornerShape(24.dp)
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .clip(itemShape)
             .background(
                 if (selected) WalletTheme.colors.accentSoft else Color.Transparent,
@@ -161,10 +183,10 @@ private fun DockItem(
             )
             .clickable(
                 interactionSource = interactionSource,
-                indication = androidx.compose.material3.ripple(bounded = true, radius = 28.dp),
+                indication = ripple(bounded = true, radius = 28.dp),
                 onClick = onClick
             )
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(vertical = 8.dp)
             .testTag("nav_tab_${screen.route}"),
         contentAlignment = Alignment.Center
     ) {
@@ -185,7 +207,7 @@ private fun DockItem(
 
             Text(
                 text = screen.title,
-                fontSize = 10.5.sp,
+                fontSize = 11.sp,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 color = textColor,
                 letterSpacing = if (selected) 0.2.sp else 0.sp
