@@ -7,6 +7,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.math.BigDecimal
 
 class FinanceEngineTest {
 
@@ -45,6 +46,7 @@ class FinanceEngineTest {
         assertNotNull(res)
         assertEquals(12000.0, res!!.interest, 0.01)
         assertEquals(112000.0, res.total, 0.01)
+        assertEquals(BigDecimal.valueOf(12000.0).setScale(2), res.interestBd)
     }
 
     @Test
@@ -53,6 +55,7 @@ class FinanceEngineTest {
         assertNotNull(res)
         assertTrue(res!!.interest > 23000.0)
         assertTrue(res.total > 123000.0)
+        assertTrue(res.interestBd > BigDecimal.valueOf(23000.0))
     }
 
     @Test

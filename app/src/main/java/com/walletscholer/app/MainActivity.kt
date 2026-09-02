@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,13 +16,11 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
@@ -33,7 +30,6 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -42,7 +38,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -72,9 +67,6 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel: WalletViewModel by viewModels()
 
-    // Source of truth for the real Google identity — backed by Play Services, survives
-    // process death independently of Room (Room's userName/userEmail are just a display
-    // cache kept in sync via viewModel.loginUser()).
     private var googleAccount by mutableStateOf<GoogleSignInAccount?>(null)
 
     private val signInLauncher = registerForActivityResult(
@@ -90,8 +82,6 @@ class MainActivity : AppCompatActivity() {
             )
             Toast.makeText(this, "Signed in as ${account.email}", Toast.LENGTH_SHORT).show()
         } catch (e: ApiException) {
-            // Common causes: OAuth consent screen not set up, SHA-1/package name not
-            // registered for this build, or the account isn't added as a test user yet.
             Toast.makeText(this, "Sign-in failed (code ${e.statusCode}): ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
@@ -100,8 +90,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Restore a previous real sign-in session if one exists.
-        googleAccount = GoogleAuthManager.getLastSignedInAccount(this)
+        try {
+            googleAccount = GoogleAuthManager.getLastSignedInAccount(this)
+        } catch (_: Exception) {
+            googleAccount = null
+        }
 
         setContent {
             val isDarkTheme by viewModel.isDarkTheme.collectAsState()
@@ -125,6 +118,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshBankingApps()
+    }
 }
 
 @Composable
@@ -141,40 +139,30 @@ fun MainAppContent(
     var showAccountSyncSheet by remember { mutableStateOf(false) }
     var editingTx by remember { mutableStateOf<TransactionEntity?>(null) }
 
-    // ── Biometric lock state ──────────────────────────────────────────────────
     val settings by viewModel.settings.collectAsState()
+    val isAppUnlocked by viewModel.isAppUnlocked.collectAsState()
+
     val biometricAvailable = remember {
         BiometricLockManager.isAvailable(viewModel.getApplication())
     }
-    // Start locked if biometric lock is enabled and hardware is available.
-    // We use null as "undecided" so we don't flash the lock screen before
-    // settings are loaded from Room.
-    var isLocked by remember { mutableStateOf<Boolean?>(null) }
-    val biometricEnabled = settings?.biometricLockEnabled == true && biometricAvailable
 
-    // Once settings load, decide initial lock state
-    androidx.compose.runtime.LaunchedEffect(biometricEnabled) {
-        if (isLocked == null) {
-            isLocked = biometricEnabled
-        }
+    // App Lock enforcement
+    val isBiometricEnabled = settings?.biometricLockEnabled == true
+    val requiresLock = isBiometricEnabled && !isAppUnlocked
+
+    if (requiresLock) {
+        BiometricLockScreen(onUnlocked = { viewModel.setAppUnlocked(true) })
+        return
     }
-    // ─────────────────────────────────────────────────────────────────────────
 
     val transactions by viewModel.transactions.collectAsState()
-    // Re-collect settings since it's now declared above
     val goals by viewModel.goals.collectAsState()
     val budget by viewModel.budget.collectAsState()
+    val selectedMonthKey by viewModel.selectedMonthKey.collectAsState()
+    val bankingApps by viewModel.bankingApps.collectAsState()
 
     val allocations = remember(budget) { viewModel.parseAllocations(budget) }
     val customCategories = remember(budget) { viewModel.parseCustomCategories(budget) }
-
-    // Show biometric lock screen when app is locked
-    if (isLocked == true) {
-        BiometricLockScreen(onUnlocked = { isLocked = false })
-        return
-    }
-    // While settings are still null (first frame), show nothing to avoid flicker
-    if (isLocked == null && biometricEnabled) return
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -259,6 +247,13 @@ fun MainAppContent(
                         allocations = allocations,
                         goals = goals,
                         settings = settings,
+                        bankingApps = bankingApps,
+                        selectedMonthKey = selectedMonthKey,
+                        onPreviousMonth = { viewModel.previousMonth() },
+                        onNextMonth = { viewModel.nextMonth() },
+                        onResetMonth = { viewModel.resetToCurrentMonth() },
+                        onAutoCreditSalaryToggle = { viewModel.toggleAutoCreditSalary(it) },
+                        onCreditSalaryNow = { viewModel.creditSalaryNow() },
                         isDarkTheme = isDarkTheme,
                         onToggleDarkTheme = { viewModel.toggleDarkTheme(it) },
                         onOpenAddTransaction = {
@@ -309,6 +304,7 @@ fun MainAppContent(
                         onUpdateSalaryCycle = { amount, date ->
                             viewModel.updateSalaryCycle(amount, date)
                         },
+                        onToggleAutoCreditSalary = { viewModel.toggleAutoCreditSalary(it) },
                         onToggleNotifMaster = { viewModel.toggleNotifMaster(it) },
                         onToggleNotifThreshold = { key, enabled ->
                             viewModel.toggleNotifThreshold(key, enabled)
@@ -378,4 +374,3 @@ fun MainAppContent(
         )
     }
 }
-

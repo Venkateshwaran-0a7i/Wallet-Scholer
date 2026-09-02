@@ -2,7 +2,6 @@ package com.walletscholer.app.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,11 +22,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Savings
-import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -39,8 +39,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.painterResource
-import com.walletscholer.app.R
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,10 +49,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.walletscholer.app.R
 import com.walletscholer.app.data.model.GoalEntity
 import com.walletscholer.app.data.model.UserSettingsEntity
 import com.walletscholer.app.domain.FinanceEngine
@@ -79,6 +79,7 @@ fun MoreScreen(
     onSaveGoal: (id: String?, name: String, target: Double, current: Double, date: String) -> Unit,
     onDeleteGoal: (String) -> Unit,
     onUpdateSalaryCycle: (amount: Double, date: Int) -> Unit,
+    onToggleAutoCreditSalary: (Boolean) -> Unit,
     onToggleNotifMaster: (Boolean) -> Unit,
     onToggleNotifThreshold: (String, Boolean) -> Unit,
     onToggleSync: (Boolean) -> Unit,
@@ -97,7 +98,7 @@ fun MoreScreen(
     val currentSettings = settings ?: UserSettingsEntity()
 
     var salaryAmountInput by remember(currentSettings.salaryAmount) {
-        mutableStateOf(currentSettings.salaryAmount.toInt().toString())
+        mutableStateOf(if (currentSettings.salaryAmount > 0) currentSettings.salaryAmount.toInt().toString() else "85000")
     }
     var salaryDateInput by remember(currentSettings.salaryDate) {
         mutableStateOf(currentSettings.salaryDate.toString())
@@ -312,7 +313,7 @@ fun MoreScreen(
                     salaryDateInput = input
                     val day = input.toIntOrNull()
                     if (day != null && day in 1..31) {
-                        onUpdateSalaryCycle(salaryAmountInput.toDoubleOrNull() ?: 51000.0, day)
+                        onUpdateSalaryCycle(salaryAmountInput.toDoubleOrNull() ?: 85000.0, day)
                     }
                 },
                 singleLine = true,
@@ -329,12 +330,37 @@ fun MoreScreen(
                 )
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "We'll remind you to set your budget on this date. We won't assume your salary has arrived automatically.",
-                fontSize = 12.sp,
-                color = WalletTheme.colors.faint
-            )
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Auto-credit monthly salary",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = WalletTheme.colors.text
+                    )
+                    Text(
+                        text = "Automatically add salary transaction each month",
+                        fontSize = 12.sp,
+                        color = WalletTheme.colors.subtext
+                    )
+                }
+                Switch(
+                    checked = currentSettings.autoCreditSalary,
+                    onCheckedChange = { onToggleAutoCreditSalary(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = WalletTheme.colors.accent,
+                        uncheckedTrackColor = WalletTheme.colors.borderSoft
+                    ),
+                    modifier = Modifier.testTag("auto_credit_salary_switch")
+                )
+            }
         }
 
         // Notification Preferences
@@ -512,22 +538,22 @@ fun MoreScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Biometric App Lock",
+                        text = "Biometric & PIN App Lock",
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
                         color = if (isBiometricAvailable) WalletTheme.colors.text else WalletTheme.colors.faint
                     )
                     Text(
                         text = if (isBiometricAvailable)
-                            "Require fingerprint or face to open the app"
+                            "Require fingerprint, face, or PIN to open the app"
                         else
-                            "No biometrics enrolled on this device",
+                            "No biometrics or lock enrolled on device",
                         fontSize = 12.sp,
                         color = WalletTheme.colors.faint
                     )
                 }
                 Switch(
-                    checked = currentSettings.biometricLockEnabled && isBiometricAvailable,
+                    checked = currentSettings.biometricLockEnabled,
                     onCheckedChange = { onToggleBiometric(it) },
                     enabled = isBiometricAvailable,
                     colors = SwitchDefaults.colors(
@@ -622,7 +648,7 @@ fun AddGoalSheet(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                placeholder = { Text("e.g. New Laptop or Emergency Fund", color = WalletTheme.colors.faint) },
+                placeholder = { Text("e.g. Emergency Fund or Vacation", color = WalletTheme.colors.faint) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),

@@ -6,6 +6,34 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
+    <queries>
+        <!-- Package visibility queries for Banking & UPI Apps -->
+        <package android:name="com.google.android.apps.nbu.paisa.user" />
+        <package android:name="com.phonepe.app" />
+        <package android:name="net.one97.paytm" />
+        <package android:name="in.org.npci.upiapp" />
+        <package android:name="com.dreamplug.androidapp" />
+        <package android:name="in.amazon.mShop.android.shopping" />
+        <package android:name="com.whatsapp" />
+        <package android:name="com.sbi.lotusintouch" />
+        <package android:name="com.snapwork.hdfc" />
+        <package android:name="com.csam.icici.bank.imobile" />
+        <package android:name="com.axis.mobile" />
+        <package android:name="com.msf.kbank.mobile" />
+        <package android:name="com.bankofbaroda.mconnect" />
+        <package android:name="com.canarabank.mobility" />
+        <package android:name="com.pnb.pnbone" />
+        <package android:name="money.jupiter" />
+        <package android:name="co.fi.money" />
+        <package android:name="com.zerodha.kite3" />
+        <package android:name="com.nextbillion.groww" />
+
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="upi" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

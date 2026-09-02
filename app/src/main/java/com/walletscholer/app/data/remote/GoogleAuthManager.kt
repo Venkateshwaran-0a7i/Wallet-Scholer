@@ -40,12 +40,20 @@ object GoogleAuthManager {
 
     /** The account from the most recent successful sign-in, if any (survives app restarts). */
     fun getLastSignedInAccount(context: Context): GoogleSignInAccount? =
-        GoogleSignIn.getLastSignedInAccount(context)
+        try {
+            GoogleSignIn.getLastSignedInAccount(context)
+        } catch (_: Exception) {
+            null
+        }
 
     /** True once the signed-in account has actually granted the Sheets scope. */
     fun hasSheetsPermission(account: GoogleSignInAccount?): Boolean {
         if (account == null) return false
-        return GoogleSignIn.hasPermissions(account, Scope(SheetsScopes.SPREADSHEETS))
+        return try {
+            GoogleSignIn.hasPermissions(account, Scope(SheetsScopes.SPREADSHEETS))
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun signOut(context: Context, onComplete: () -> Unit) {

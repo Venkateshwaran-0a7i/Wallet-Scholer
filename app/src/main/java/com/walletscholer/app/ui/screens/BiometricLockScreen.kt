@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -31,7 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -43,12 +43,6 @@ import com.walletscholer.app.data.auth.BiometricLockManager
 import com.walletscholer.app.ui.theme.WalletTheme
 import kotlinx.coroutines.delay
 
-/**
- * Full-screen lock screen shown when biometric lock is enabled.
- * Automatically triggers the biometric prompt on first composition.
- *
- * @param onUnlocked Called when authentication succeeds — caller removes this screen.
- */
 @Composable
 fun BiometricLockScreen(
     onUnlocked: () -> Unit
@@ -65,12 +59,11 @@ fun BiometricLockScreen(
         label = "pulse"
     )
 
-    // Auto-trigger prompt when screen first appears
-    LaunchedEffect(Unit) {
-        delay(300) // short delay so UI renders first
-        activity?.let {
+    fun triggerAuth() {
+        activity?.let { act ->
+            errorMessage = ""
             BiometricLockManager.authenticate(
-                activity = it,
+                activity = act,
                 onSuccess = onUnlocked,
                 onError = { msg ->
                     if (msg.isNotBlank()) errorMessage = msg
@@ -82,7 +75,11 @@ fun BiometricLockScreen(
         }
     }
 
-    // Reset pulse animation
+    LaunchedEffect(Unit) {
+        delay(250)
+        triggerAuth()
+    }
+
     LaunchedEffect(pulsing) {
         if (pulsing) {
             delay(250)
@@ -108,7 +105,6 @@ fun BiometricLockScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(horizontal = 40.dp)
         ) {
-            // App logo / icon indicator
             Box(
                 modifier = Modifier
                     .size(90.dp)
@@ -116,11 +112,11 @@ fun BiometricLockScreen(
                     .background(WalletTheme.colors.accentSoft),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "₩",
-                    fontSize = 44.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = WalletTheme.colors.accent
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = "Lock",
+                    tint = WalletTheme.colors.accent,
+                    modifier = Modifier.size(44.dp)
                 )
             }
 
@@ -136,59 +132,45 @@ fun BiometricLockScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Your finances are protected.\nAuthenticate to continue.",
+                text = "App is locked for your financial privacy.\nVerify identity to continue.",
                 fontSize = 14.sp,
                 color = WalletTheme.colors.subtext,
                 textAlign = TextAlign.Center,
                 lineHeight = 20.sp
             )
 
-            Spacer(modifier = Modifier.height(52.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-            // Fingerprint icon button
             Surface(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(88.dp)
                     .scale(scale),
                 shape = CircleShape,
                 color = WalletTheme.colors.accentSoft,
-                shadowElevation = 4.dp,
-                onClick = {
-                    activity?.let {
-                        BiometricLockManager.authenticate(
-                            activity = it,
-                            onSuccess = onUnlocked,
-                            onError = { msg ->
-                                if (msg.isNotBlank()) errorMessage = msg
-                            },
-                            onFailed = {
-                                pulsing = true
-                            }
-                        )
-                    }
-                }
+                shadowElevation = 6.dp,
+                onClick = { triggerAuth() }
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Icon(
                         imageVector = Icons.Default.Fingerprint,
-                        contentDescription = "Authenticate",
+                        contentDescription = "Authenticate with Biometrics or PIN",
                         tint = WalletTheme.colors.accent,
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier.size(50.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             Text(
-                text = "Tap to authenticate",
+                text = "Tap fingerprint to unlock",
                 fontSize = 13.sp,
                 color = WalletTheme.colors.faint,
                 fontWeight = FontWeight.Medium
             )
 
             if (errorMessage.isNotBlank()) {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 Surface(
                     color = WalletTheme.colors.dangerSoft,
                     shape = RoundedCornerShape(12.dp)
@@ -203,23 +185,10 @@ fun BiometricLockScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(36.dp))
 
-            // Try again button
             Button(
-                onClick = {
-                    errorMessage = ""
-                    activity?.let {
-                        BiometricLockManager.authenticate(
-                            activity = it,
-                            onSuccess = onUnlocked,
-                            onError = { msg ->
-                                if (msg.isNotBlank()) errorMessage = msg
-                            },
-                            onFailed = { pulsing = true }
-                        )
-                    }
-                },
+                onClick = { triggerAuth() },
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = WalletTheme.colors.accent,
@@ -228,9 +197,9 @@ fun BiometricLockScreen(
                 modifier = Modifier.testTag("biometric_retry_button")
             ) {
                 Text(
-                    text = "Try Again",
+                    text = "Unlock with PIN / Fingerprint",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    fontSize = 14.5.sp,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
             }

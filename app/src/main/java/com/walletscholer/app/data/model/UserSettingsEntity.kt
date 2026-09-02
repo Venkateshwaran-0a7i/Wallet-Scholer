@@ -8,6 +8,8 @@ data class UserSettingsEntity(
     @PrimaryKey val id: Int = 1,
     val salaryAmount: Double = 0.0,
     val salaryDate: Int = 1,
+    val autoCreditSalary: Boolean = false,
+    val lastSalaryCreditedMonth: String = "",
     val notifMaster: Boolean = true,
     val notifThresholdsJson: String = "{\"75\":true,\"90\":true,\"100\":true,\"Over budget\":true}",
     val isDarkTheme: Boolean = true,

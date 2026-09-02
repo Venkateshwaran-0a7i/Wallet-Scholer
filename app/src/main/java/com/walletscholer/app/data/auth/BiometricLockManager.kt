@@ -11,7 +11,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 
 /**
- * Checks biometric availability and triggers the system biometric prompt.
+ * Checks biometric/device credential availability and triggers the system biometric prompt.
  * Works on API 26+ (minSdk = 26 in this project).
  */
 object BiometricLockManager {
@@ -22,12 +22,21 @@ object BiometricLockManager {
      */
     fun isAvailable(context: Context): Boolean {
         val mgr = BiometricManager.from(context)
-        val result = mgr.canAuthenticate(BIOMETRIC_WEAK or DEVICE_CREDENTIAL)
-        return result == BiometricManager.BIOMETRIC_SUCCESS
+        return try {
+            val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                mgr.canAuthenticate(BIOMETRIC_STRONG or BIOMETRIC_WEAK or DEVICE_CREDENTIAL)
+            } else {
+                @Suppress("DEPRECATION")
+                mgr.canAuthenticate(BIOMETRIC_WEAK or DEVICE_CREDENTIAL)
+            }
+            result == BiometricManager.BIOMETRIC_SUCCESS
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
-     * Shows the biometric prompt. Callbacks fire on the main thread.
+     * Shows the biometric prompt with device credential fallback. Callbacks fire on the main thread.
      *
      * @param activity      A FragmentActivity (your MainActivity)
      * @param onSuccess     Called when authentication succeeds
@@ -37,7 +46,7 @@ object BiometricLockManager {
     fun authenticate(
         activity: FragmentActivity,
         title: String = "Unlock Wallet Scholar",
-        subtitle: String = "Use your fingerprint or face to open the app",
+        subtitle: String = "Use your fingerprint, face, or device PIN to continue",
         onSuccess: () -> Unit,
         onError: (String) -> Unit,
         onFailed: () -> Unit = {}
@@ -50,13 +59,12 @@ object BiometricLockManager {
             }
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                // errorCode 10 = user pressed Cancel / back; 13 = lockout
                 if (errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON &&
                     errorCode != BiometricPrompt.ERROR_USER_CANCELED
                 ) {
                     onError(errString.toString())
                 } else {
-                    onError("") // Silent cancel — caller decides what to do
+                    onError("") // User cancelled
                 }
             }
 
@@ -67,12 +75,21 @@ object BiometricLockManager {
 
         val prompt = BiometricPrompt(activity, executor, callback)
 
-        val info = BiometricPrompt.PromptInfo.Builder()
+        val infoBuilder = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
-            .setAllowedAuthenticators(BIOMETRIC_WEAK or DEVICE_CREDENTIAL)
-            .build()
 
-        prompt.authenticate(info)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            infoBuilder.setAllowedAuthenticators(BIOMETRIC_STRONG or BIOMETRIC_WEAK or DEVICE_CREDENTIAL)
+        } else {
+            @Suppress("DEPRECATION")
+            infoBuilder.setDeviceCredentialAllowed(true)
+        }
+
+        try {
+            prompt.authenticate(infoBuilder.build())
+        } catch (e: Exception) {
+            onError(e.localizedMessage ?: "Authentication failed to start")
+        }
     }
 }
