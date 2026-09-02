@@ -26,6 +26,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -37,10 +39,8 @@ import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Today
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -218,13 +218,15 @@ fun HomeScreen(
         val catName = DefaultCategories.findCategory(topCatEntry.key).name
         insights.add("Your biggest spend this month is $catName at ${FinanceEngine.fmtMoney(topCatEntry.value)}.")
     }
-    insights.add(
-        if (actualSavingsPct >= 20.0) {
-            "You're saving ${actualSavingsPct.toInt()}% of income — at or above your 20% target."
-        } else {
-            "Your actual savings (${actualSavingsPct.toInt()}%) are below your 20% target this month."
-        }
-    )
+    if (monthIncome > 0) {
+        insights.add(
+            if (actualSavingsPct >= 20.0) {
+                "You're saving ${actualSavingsPct.toInt()}% of income — at or above your 20% target."
+            } else {
+                "Your actual savings (${actualSavingsPct.toInt()}%) are below your 20% target this month."
+            }
+        )
+    }
     if (alerts.isNotEmpty()) {
         insights.add("You have used ${alerts[0].pct.toInt()}% of your ${alerts[0].name} budget.")
     }
@@ -686,7 +688,7 @@ fun HomeScreen(
                                         )
                                     } else {
                                         Icon(
-                                            imageVector = Icons.Default.OpenInNew,
+                                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                                             contentDescription = null,
                                             tint = WalletTheme.colors.subtext,
                                             modifier = Modifier.size(10.dp)
@@ -968,28 +970,30 @@ fun HomeScreen(
         }
 
         // Insights Section
-        SectionHeader(title = "Insights")
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            insights.forEach { ins ->
-                AppCard {
-                    Row(
-                        verticalAlignment = Alignment.Top,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.TrendingUp,
-                            contentDescription = null,
-                            tint = WalletTheme.colors.accent,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .padding(top = 2.dp)
-                        )
-                        Text(
-                            text = ins,
-                            fontSize = 13.5.sp,
-                            color = WalletTheme.colors.text,
-                            modifier = Modifier.weight(1f)
-                        )
+        if (insights.isNotEmpty()) {
+            SectionHeader(title = "Insights")
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                insights.forEach { ins ->
+                    AppCard {
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                                contentDescription = null,
+                                tint = WalletTheme.colors.accent,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .padding(top = 2.dp)
+                            )
+                            Text(
+                                text = ins,
+                                fontSize = 13.5.sp,
+                                color = WalletTheme.colors.text,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }

@@ -179,20 +179,20 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
     fun creditSalaryNow() {
         viewModelScope.launch {
             val s = settings.value ?: repository.getSettingsDirect() ?: UserSettingsEntity()
-            val salaryAmt = if (s.salaryAmount > 0.0) s.salaryAmount else 50000.0
+            if (s.salaryAmount <= 0.0) return@launch
             val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
             val tx = TransactionEntity(
                 id = UUID.randomUUID().toString(),
                 type = "INCOME",
                 categoryId = "salary",
-                amount = salaryAmt,
+                amount = s.salaryAmount,
                 date = todayStr,
                 time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()),
                 description = "Monthly Salary",
                 status = "ACTIVE"
             )
             repository.saveTransaction(tx)
-            repository.updateSettings(s.copy(salaryAmount = salaryAmt, lastSalaryCreditedMonth = currentMonthKey))
+            repository.updateSettings(s.copy(lastSalaryCreditedMonth = currentMonthKey))
             triggerAutoSync()
         }
     }

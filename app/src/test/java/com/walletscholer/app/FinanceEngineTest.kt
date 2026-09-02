@@ -100,5 +100,59 @@ class FinanceEngineTest {
             emiCommitment = 5000.0
         )
         assertEquals(17000.0, safe, 0.001)
+
+        // Deficit / Negative safe to spend returns 0.0
+        val deficit = FinanceEngine.safeToSpend(
+            balance = 10000.0,
+            essentialRemaining = 15000.0,
+            savingsCommitment = 5000.0
+        )
+        assertEquals(0.0, deficit, 0.001)
+    }
+
+    @Test
+    fun testEdgeCasesAndZeroInterest() {
+        // Zero interest SI
+        val siZero = FinanceEngine.simpleInterest(50000.0, 0.0, 3.0)
+        assertNotNull(siZero)
+        assertEquals(0.0, siZero!!.interest, 0.001)
+        assertEquals(50000.0, siZero.total, 0.001)
+
+        // Invalid inputs
+        assertNull(FinanceEngine.simpleInterest(0.0, 5.0, 1.0))
+        assertNull(FinanceEngine.simpleInterest(1000.0, -1.0, 1.0))
+        assertNull(FinanceEngine.simpleInterest(1000.0, 5.0, 0.0))
+
+        // Zero return SIP
+        val sipZero = FinanceEngine.sipFutureValue(1000.0, 0.0, 2.0)
+        assertNotNull(sipZero)
+        assertEquals(24000.0, sipZero!!.invested, 0.001)
+        assertEquals(24000.0, sipZero.futureValue, 0.001)
+        assertEquals(0.0, sipZero.gain, 0.001)
+
+        // Invalid SIP inputs
+        assertNull(FinanceEngine.sipFutureValue(0.0, 10.0, 2.0))
+        assertNull(FinanceEngine.sipFutureValue(1000.0, 10.0, 0.0))
+
+        // Zero rate EMI
+        val emiZero = FinanceEngine.emiCalc(12000.0, 0.0, 1.0)
+        assertNotNull(emiZero)
+        assertEquals(1000.0, emiZero!!.emi, 0.01)
+        assertEquals(12000.0, emiZero.totalPayment, 0.01)
+        assertEquals(0.0, emiZero.totalInterest, 0.01)
+
+        // Required monthly savings
+        val reqSavings = FinanceEngine.requiredMonthlySavings(120000.0, 0.0, 1.0)
+        assertNotNull(reqSavings)
+        assertEquals(10000.0, reqSavings!!.monthly, 0.01)
+        assertEquals(120000.0, reqSavings.totalDeposited, 0.01)
+        assertEquals(0.0, reqSavings.gain, 0.01)
+
+        // What percent division by zero
+        assertNull(FinanceEngine.whatPercent(100.0, 0.0))
+
+        // Utilization with zero allocation
+        assertEquals(0.0, FinanceEngine.utilizationPct(0.0, 0.0), 0.001)
+        assertEquals(100.0, FinanceEngine.utilizationPct(500.0, 0.0), 0.001)
     }
 }

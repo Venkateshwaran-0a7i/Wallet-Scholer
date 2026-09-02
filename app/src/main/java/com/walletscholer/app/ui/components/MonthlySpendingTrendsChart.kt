@@ -21,11 +21,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -160,11 +160,7 @@ fun MonthlySpendingTrendsChart(
             val inc = txsInMonth.filter { it.type == "INCOME" }.sumOf { it.amount }
             val exp = txsInMonth.filter { it.type == "EXPENSE" }.sumOf { it.amount }
 
-            // Provide realistic historical visualization curve if database has early entries
-            val finalInc = if (inc == 0.0 && i > 0) 45000.0 + (i * 2000.0) else inc
-            val finalExp = if (exp == 0.0 && i > 0) 22000.0 + (i * 1500.0) else exp
-
-            list.add(MonthTrendData(monthLabel = label, income = finalInc, expense = finalExp))
+            list.add(MonthTrendData(monthLabel = label, income = inc, expense = exp))
         }
         list
     }
@@ -224,7 +220,7 @@ fun MonthlySpendingTrendsChart(
                         onClick = { selectedMode = ChartViewMode.MONTHLY_TREND }
                     )
                     ChartModeTab(
-                        icon = Icons.Default.ShowChart,
+                        icon = Icons.AutoMirrored.Filled.ShowChart,
                         selected = selectedMode == ChartViewMode.DAILY_PACE,
                         onClick = { selectedMode = ChartViewMode.DAILY_PACE }
                     )
@@ -630,7 +626,7 @@ private fun DailyPaceTrajectoryView(
             val currentFraction = (dayOfMonth.toFloat() / daysInMonth.toFloat()).coerceIn(0.05f, 1f)
             val spentFraction = if (totalAllocated > 0) {
                 (totalMonthExpense / totalAllocated).toFloat().coerceIn(0f, 1.2f)
-            } else 0.5f
+            } else 0f
 
             val curX = w * currentFraction
             val curY = h - (spentFraction * (h - 10f)).coerceAtMost(h)

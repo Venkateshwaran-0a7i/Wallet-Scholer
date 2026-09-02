@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CardGiftcard
@@ -184,7 +185,7 @@ fun getCategoryIcon(key: String): ImageVector {
         "emergency", "alert" -> Icons.Default.Warning
         "medicine", "pill" -> Icons.Default.MedicalServices
         "emi", "credit_card" -> Icons.Default.CreditCard
-        "investment", "trending_up" -> Icons.Default.TrendingUp
+        "investment", "trending_up" -> Icons.AutoMirrored.Filled.TrendingUp
         "salary", "briefcase" -> Icons.Default.Work
         "freelance", "laptop" -> Icons.Default.Laptop
         "bonus", "gift" -> Icons.Default.CardGiftcard

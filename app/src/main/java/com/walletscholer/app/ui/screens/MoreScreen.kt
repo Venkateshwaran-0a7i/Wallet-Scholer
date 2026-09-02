@@ -19,11 +19,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
@@ -98,10 +98,10 @@ fun MoreScreen(
     val currentSettings = settings ?: UserSettingsEntity()
 
     var salaryAmountInput by remember(currentSettings.salaryAmount) {
-        mutableStateOf(if (currentSettings.salaryAmount > 0) currentSettings.salaryAmount.toInt().toString() else "85000")
+        mutableStateOf(if (currentSettings.salaryAmount > 0) currentSettings.salaryAmount.toInt().toString() else "")
     }
     var salaryDateInput by remember(currentSettings.salaryDate) {
-        mutableStateOf(currentSettings.salaryDate.toString())
+        mutableStateOf(if (currentSettings.salaryDate in 1..31) currentSettings.salaryDate.toString() else "1")
     }
 
     // Thresholds map
@@ -188,7 +188,7 @@ fun MoreScreen(
             if (!signedIn) {
                 PrimaryAppButton(
                     text = "Continue with Google",
-                    leadingIcon = Icons.Default.Login,
+                    leadingIcon = Icons.AutoMirrored.Filled.Login,
                     onClick = onLoginClick
                 )
             } else {
@@ -313,7 +313,7 @@ fun MoreScreen(
                     salaryDateInput = input
                     val day = input.toIntOrNull()
                     if (day != null && day in 1..31) {
-                        onUpdateSalaryCycle(salaryAmountInput.toDoubleOrNull() ?: 85000.0, day)
+                        onUpdateSalaryCycle(salaryAmountInput.toDoubleOrNull() ?: 0.0, day)
                     }
                 },
                 singleLine = true,

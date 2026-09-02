@@ -48,6 +48,7 @@ import com.google.android.gms.common.api.ApiException
 import com.walletscholer.app.data.auth.BiometricLockManager
 import com.walletscholer.app.data.model.TransactionEntity
 import com.walletscholer.app.data.remote.GoogleAuthManager
+import com.walletscholer.app.ui.navigation.GlassCapsuleDock
 import com.walletscholer.app.ui.navigation.NAV_ITEMS
 import com.walletscholer.app.ui.navigation.Screen
 import com.walletscholer.app.ui.screens.AccountSyncSheet
@@ -169,41 +170,11 @@ fun MainAppContent(
         containerColor = WalletTheme.colors.appBg,
         contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
-            NavigationBar(
-                containerColor = WalletTheme.colors.navBg,
-                tonalElevation = 0.dp,
-                modifier = Modifier.testTag("bottom_navigation_bar")
-            ) {
-                NAV_ITEMS.forEach { screen ->
-                    val selected = currentScreen == screen
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = { currentScreen = screen },
-                        icon = {
-                            Icon(
-                                imageVector = screen.icon,
-                                contentDescription = screen.title,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = screen.title,
-                                fontSize = 11.sp,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = WalletTheme.colors.accent,
-                            selectedTextColor = WalletTheme.colors.accent,
-                            unselectedIconColor = WalletTheme.colors.faint,
-                            unselectedTextColor = WalletTheme.colors.faint,
-                            indicatorColor = WalletTheme.colors.accentSoft
-                        ),
-                        modifier = Modifier.testTag("nav_tab_${screen.route}")
-                    )
-                }
-            }
+            GlassCapsuleDock(
+                currentScreen = currentScreen,
+                onScreenSelected = { currentScreen = it },
+                isDarkTheme = isDarkTheme
+            )
         },
         floatingActionButton = {
             if (currentScreen == Screen.Home || currentScreen == Screen.Wallet) {
